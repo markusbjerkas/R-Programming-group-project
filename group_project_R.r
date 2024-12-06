@@ -1,7 +1,7 @@
 #R project.
 #Loading csv files.
 ratings <- read.csv('dataset/ml-latest/ratings.csv')
-tags <- read.csv('dataset/ml-latest/ratings.csv')
+tags <- read.csv('dataset/ml-latest/tags.csv')
 movies <- read.csv('dataset/ml-latest/movies.csv')
 links <- read.csv('dataset/ml-latest/links.csv')
 
@@ -68,4 +68,107 @@ ggplot(genre_count, aes(x = reorder(genres, -n), y = n)) +
     axis.title = element_text(size = 14),
     panel.grid.major.y = element_blank()  # Remove horizontal gridlines for genres
   )
-  
+
+
+#TRENDS
+
+#AVERAGE MOVIE RATING OVER TIME
+library(dplyr)
+library(ggplot2)
+
+#Converting timestamp in ratings
+ratings$date <- as.POSIXct(ratings$timestamp, origin = "1970-01-01") #Converted Unix timestamp
+ratings$year <- format(ratings$date, "%Y") #Extracted year for trend analysis
+
+#Aggregating average rating per year
+ratings_trend <- ratings %>%
+  group_by(year) %>%
+  summarize(avg_rating = mean(rating), rating_count = n(), .groups = 'drop')
+
+#Plotting the trend of average ratings over time
+ggplot(ratings_trend, aes(x = as.numeric(year), y = avg_rating)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "darkblue", size = 2) +
+  labs(
+    title = "Average Movie Ratings Over Time",
+    x = "Year",
+    y = "Average Rating"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14)
+  )
+
+
+
+#AVERAGE RATING OVER TIME BY GENRE
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+#Merging ratings with movies
+ratings_movies <- ratings %>%
+  inner_join(movies, by = "movieId") #Combined ratings and movies datasets
+
+#Aggregating ratings by movie before splitting genres
+avg_rating_by_movie <- ratings_movies %>%
+  group_by(movieId, title) %>%
+  summarize(avg_rating = mean(rating), rating_count = n(), .groups = 'drop') #Pre-aggregation
+
+#Splitting genres and aggregate ratings by genre
+avg_rating_by_genre <- ratings_movies %>%
+  select(movieId, genres, rating) %>%
+  separate_rows(genres, sep = "\\|") %>% #Split genres into separate rows
+  group_by(genres) %>%
+  summarize(
+    avg_rating = mean(rating, na.rm = TRUE),
+    total_ratings = n(),
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(avg_rating))
+
+#Visualising ratings by genre
+ggplot(avg_rating_by_genre, aes(x = reorder(genres, avg_rating), y = avg_rating)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +
+  labs(
+    title = "Average Movie Ratings by Genre",
+    x = "Genres",
+    y = "Average Rating"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14)
+  )
+
+#Analysing rating trends over time
+ratings$date <- as.POSIXct(ratings$timestamp, origin = "1970-01-01") #Converted timestamp
+ratings$year <- format(ratings$date, "%Y") #Extracted year
+
+ratings_trend <- ratings %>%
+  group_by(year) %>%
+  summarize(
+    avg_rating = mean(rating, na.rm = TRUE),
+    total_ratings = n(),
+    .groups = 'drop'
+  )
+
+#Visualising rating trends over time
+ggplot(ratings_trend, aes(x = as.numeric(year), y = avg_rating)) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_point(color = "darkblue", size = 2) +
+  labs(
+    title = "Average Movie Ratings Over Time",
+    x = "Year",
+    y = "Average Rating"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 14)
+  )
