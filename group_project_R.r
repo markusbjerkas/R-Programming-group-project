@@ -172,3 +172,60 @@ ggplot(ratings_trend, aes(x = as.numeric(year), y = avg_rating)) +
     axis.text = element_text(size = 12),
     axis.title = element_text(size = 14)
   )
+
+# Load required libraries
+library(dplyr)
+library(tidyr)
+library(caret) # For regression and ML models
+
+# Merge ratings and movies data
+ratings_movies <- ratings %>%
+  inner_join(movies, by = "movieId")
+
+# Preprocess genres for regression (dummy encoding)
+ratings_movies_genres <- ratings_movies %>%
+  separate_rows(genres, sep = "\\|") %>%
+  mutate(genre_flag = 1) %>%
+  pivot_wider(names_from = genres, values_from = genre_flag, values_fill = 0)
+
+# Aggregate ratings by movie for regression
+regression_data <- ratings_movies_genres %>%
+  group_by(movieId, title, year) %>%
+  summarize(
+    avg_rating = mean(rating, na.rm = TRUE),
+    total_ratings = n(),
+    across(starts_with("genre_"), sum, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Add release year as numeric
+regression_data$year <- as.numeric(substr(regression_data$year, 1, 4))
+
+# Simple Linear Regression: Predicting average rating based on total ratings and year
+model <- lm(avg_rating ~ total_ratings + year, data = regression_data)
+summary(model) # Inspect the model
+
+# Multiple Linear Regression: Adding genres
+genre_cols <- grep("genre_", names(regression_data), value = TRUE)
+formula <- as.formula(
+  paste("avg_rating ~ total_ratings + year +", paste(genre_cols, collapse = " + "))
+)
+model_with_genres <- lm(formula, data = regression_data)
+summary(model_with_genres) # Inspect the model
+
+# Optional: Evaluate model performance
+# Splitting data for train-test validation
+set.seed(123)
+train_index <- createDataPartition(regression_data$avg_rating, p = 0.8, list = FALSE)
+train_data <- regression_data[train_index, ]
+test_data <- regression_data[-train_index, ]
+
+# Train the model on training data
+train_model <- lm(formula, data = train_data)
+
+# Predict on test data
+predictions <- predict(train_model, newdata = test_data)
+
+# Calculate Mean Squared Error
+mse <- mean((test_data$avg_rating - predictions)^2)
+print(paste("Mean Squared Error:", mse))
