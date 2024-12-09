@@ -5,6 +5,12 @@ tags <- read.csv('dataset/ml-latest/tags.csv')
 movies <- read.csv('dataset/ml-latest/movies.csv')
 links <- read.csv('dataset/ml-latest/links.csv')
 
+# Load necessary libraries
+library(tidyr)
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(caret)
 
 
 #Checking for missing data:
@@ -104,9 +110,6 @@ ggplot(ratings_trend, aes(x = as.numeric(year), y = avg_rating)) +
 
 
 #AVERAGE RATING OVER TIME BY GENRE
-library(dplyr)
-library(tidyr)
-library(ggplot2)
 
 #Merging ratings with movies
 ratings_movies <- ratings %>%
@@ -173,10 +176,7 @@ ggplot(ratings_trend, aes(x = as.numeric(year), y = avg_rating)) +
     axis.title = element_text(size = 14)
   )
 
-# Load required libraries
-library(dplyr)
-library(tidyr)
-library(caret) # For regression and ML models
+# CORRELATION BETWEEN USER CHARACTERISTICS AND PREFERENCES
 
 # Merge ratings and movies data
 ratings_movies <- ratings %>%
