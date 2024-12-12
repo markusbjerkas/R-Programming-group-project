@@ -217,3 +217,61 @@ predictions <- predict(train_model, newdata = test_data)
 #Calculate mean squared error
 mse <- mean((test_data$avg_rating - predictions)^2)
 print(paste("Mean Squared Error:", mse))
+
+#Further Analysis
+
+#Analysis of user behaviour through aggregation of user ratings
+user_behavior <- ratings %>%
+  group_by(userId) %>%
+  summarize(avg_rating = mean(rating), total_ratings = n())
+ggplot(user_behavior, aes(x = total_ratings, y = avg_rating)) +
+  geom_point(alpha = 0.5) +
+  labs(title = "User Rating Behavior", x = "Total Ratings", y = "Average Rating")
+
+#Analysis of variance of pupularity of various movies by decade
+movies$decade <- floor(as.numeric(substr(movies$year, 1, 4)) / 10) * 10
+popularity_by_decade <- movies %>%
+  inner_join(ratings, by = "movieId") %>%
+  group_by(decade) %>%
+  summarize(total_ratings = n())
+
+#Future predictions
+#Predictions of future trends in movie ratings
+library(forecast)
+ts_data <- ts(ratings_trend$avg_rating, start = as.numeric(min(ratings_trend$year)), frequency = 1)
+forecast_model <- auto.arima(ts_data)
+forecasted <- forecast(forecast_model, h = 5)
+plot(forecasted)
+
+#Predicting average movie ratings using regression models in relation to factors like genre,year or total ratings
+
+# Prepare a predictive model 
+genre_cols <- grep("genre_", names(regression_data), value = TRUE)
+reg_formula <- as.formula(
+  paste("avg_rating ~ total_ratings + year +", paste(genre_cols, collapse = " + "))
+)
+
+# Train-test split
+set.seed(123)
+train_index <- createDataPartition(regression_data$avg_rating, p = 0.8, list = FALSE)
+train_data <- regression_data[train_index, ]
+test_data <- regression_data[-train_index, ]
+
+# Fit a regression model
+lm_model <- lm(reg_formula, data = train_data)
+
+# Predict test data
+test_predictions <- predict(lm_model, newdata = test_data)
+
+# Evaluate the model
+mse <- mean((test_data$avg_rating - test_predictions)^2)
+cat("Mean Squared Error on Test Data:", mse)
+
+# Visualise and compare actual and predicted ratings
+ggplot(data.frame(Actual = test_data$avg_rating, Predicted = test_predictions), aes(x = Actual, y = Predicted)) +
+  geom_point(alpha = 0.5, color = "blue") +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Actual vs Predicted Ratings", x = "Actual Ratings", y = "Predicted Ratings") +
+  theme_minimal()
+
+
